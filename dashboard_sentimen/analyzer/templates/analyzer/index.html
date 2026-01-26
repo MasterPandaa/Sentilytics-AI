@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #eef2f7;
+            color: #333;
+        }
+
+        .sidebar {
+            background: white;
+            min-height: 100vh;
+            padding: 2rem;
+            border-right: 1px solid #ddd;
+        }
+
+        /* --- FLIP CARD CSS --- */
+        .flip-card {
+            background-color: transparent;
+            /* 1. TINGGI DITAMBAH DIKIT AGAR TEKS XAI MUAT SEMUA */
+            height: 650px;
+            perspective: 1000px;
+            margin-bottom: 20px;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+
+        .flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+            background: white;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .flip-card-front {
+            border-top: 6px solid #3498db;
+        }
+
+        .flip-card-back {
+            transform: rotateY(180deg);
+            border-top: 6px solid #2c3e50;
+            background: #fdfdfd;
+        }
+
+        /* Styling Elements */
+        .star-rating {
+            color: #f1c40f;
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+
+        .verdict-badge {
+            font-size: 0.85rem;
+            padding: 6px 15px;
+            border-radius: 30px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-mini {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+        }
+
+        .metric-mini h6 {
+            font-size: 1.3rem;
+            margin: 0;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .metric-mini span {
+            font-size: 0.75rem;
+            color: #95a5a6;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 2. UPDATE: Narrative Box (TIDAK ADA SCROLL) */
+        .narrative-box {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #555;
+            min-height: 100px;
+            height: auto;
+            /* Tinggi otomatis mengikuti teks */
+            max-height: none;
+            /* Hapus batasan tinggi */
+            overflow: visible;
+            /* Hapus scrollbar */
+            border-left: 4px solid #3498db;
+            margin-bottom: 15px;
+        }
+
+        /* Buttons */
+        .btn-download {
+            background-color: #fff;
+            border: 2px solid #ecf0f1;
+            color: #7f8c8d;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 10px 0;
+            transition: all 0.3s;
+        }
+
+        .btn-download:hover {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            border-color: #bdc3c7;
+        }
+
+        .btn-tech {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding: 12px 0;
+        }
+
+        /* Modal Image Zoom */
+        .modal-body img {
+            width: 70%;
+            height: auto;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container-fluid">
+        <div class="row">
+
+            <div class="col-md-3 sidebar">
+                <h4 class="fw-bold mb-4"><i class="fas fa-magic text-primary me-2"></i>AI Analyzer</h4>
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="fw-bold small text-muted">UPLOAD DATASET</label>
+                        {{ form.file }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold small text-muted">SAMPEL DATA</label>
+                        {{ form.sample_size }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold small text-muted">CONFIG AI (TREES)</label>
+                        {{ form.n_estimators }}
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
+                        <i class="fas fa-search me-1"></i> ANALISIS
+                    </button>
+                </form>
+
+                <div class="mt-4 pt-3 border-top">
+                    <a href="{% url 'reset_session' %}" class="btn btn-outline-danger btn-sm w-100">
+                        <i class="fas fa-trash-alt me-1"></i> Reset Dashboard
+                    </a>
+                </div>
+
+                {% if error %} <div class="alert alert-danger mt-3 small">{{ error }}</div> {% endif %}
+            </div>
+
+            <div class="col-md-9 p-4">
+
+                {% if results %}
+                <div class="card border-0 shadow-sm p-4 mb-5 rounded-4 bg-white">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <h3 class="fw-bold mb-2 text-primary">Ringkasan Eksekutif</h3>
+                            <p class="text-muted small">Grafik di samping membandingkan jumlah ulasan Positif, Netral,
+                                dan Negatif dari setiap dataset yang dianalisis.</p>
+                        </div>
+                        <div class="col-md-9 text-center">
+                            <img src="data:image/png;base64,{{ comparison_chart }}" class="img-fluid"
+                                style="max-height: 280px;">
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold text-secondary mb-4 ms-2">Detail Analisis & Prediksi AI</h5>
+
+                <div class="row">
+                    {% for res in results %}
+                    <div class="col-lg-4 col-md-6">
+                        <div class="flip-card" id="card-{{ forloop.counter }}">
+                            <div class="flip-card-inner">
+
+                                <div class="flip-card-front">
+
+                                    <div class="text-center">
+
+                                        <div class="mb-2">
+                                            <span class="badge bg-light text-dark border px-3 py-1 rounded-pill small">
+                                                <i class="fas fa-database me-1 text-muted"></i> {{ res.used_sample }}
+                                                Data
+                                            </span>
+                                        </div>
+
+                                        <h4 class="fw-bold text-dark m-0 text-truncate mb-2"
+                                            title="{{ res.full_name }}">
+                                            {{ res.name }}
+                                        </h4>
+
+                                        <div
+                                            class="verdict-badge bg-{{ res.verdict_color }} bg-opacity-10 text-{{ res.verdict_color }}">
+                                            {{ res.verdict }}
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <div class="star-rating">
+                                                {% for i in res.stars.full %}<i class="fas fa-star"></i>{% endfor %}
+                                                {% if res.stars.half %}<i class="fas fa-star-half-alt"></i>{% endif %}
+                                                {% for i in res.stars.empty %}<i class="far fa-star"></i>{% endfor %}
+                                            </div>
+                                            <h2 class="fw-bold mb-0 text-dark" style="font-size: 2.5rem;">
+                                                {{ res.stars.value }} <span class="fs-6 text-muted fw-normal">/
+                                                    5.0</span>
+                                            </h2>
+                                            <small class="text-muted text-uppercase fw-bold"
+                                                style="font-size: 0.7rem; letter-spacing: 1px;">Kualitas Model
+                                                AI</small>
+                                        </div>
+
+                                        <div class="narrative-box">
+                                            {{ res.narrative|safe }}
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex flex-column gap-2 mt-auto">
+                                        <button class="btn btn-outline-primary btn-tech w-100 rounded-pill"
+                                            onclick="flipCard('card-{{ forloop.counter }}')">
+                                            DATA TEKNIS <i class="fas fa-arrow-right ms-1"></i>
+                                        </button>
+
+                                        <a href="{% url 'download_model' forloop.counter0 %}"
+                                            class="btn btn-download w-100 rounded-pill">
+                                            <i class="fas fa-cloud-download-alt me-2"></i> Unduh Model (.pkl)
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div class="flip-card-back">
+                                    <div
+                                        class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                                        <h5 class="fw-bold m-0 text-primary">Evaluasi Model</h5>
+                                        <button class="btn btn-sm btn-light rounded-circle shadow-sm"
+                                            onclick="flipCard('card-{{ forloop.counter }}')">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <div class="metric-mini">
+                                                <h6>{{ res.accuracy }}%</h6><span>Accuracy</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="metric-mini">
+                                                <h6>{{ res.f1_score }}%</h6><span>F1-Score</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="metric-mini">
+                                                <h6>{{ res.precision }}%</h6><span>Precision</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="metric-mini">
+                                                <h6>{{ res.recall }}%</h6><span>Recall</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3 text-center flex-grow-1 d-flex flex-column justify-content-center">
+                                        <small class="text-muted fw-bold d-block mb-2 text-uppercase"
+                                            style="font-size: 0.7rem;">Confusion Matrix Preview</small>
+                                        <div class="position-relative" style="cursor: pointer;"
+                                            onclick="showModal('{{ res.name }}', 'data:image/png;base64,{{ res.cm_image }}')">
+                                            <img src="data:image/png;base64,{{ res.cm_image }}"
+                                                class="img-fluid rounded border shadow-sm"
+                                                style="height: 100px; object-fit: contain;">
+                                            <div class="position-absolute top-50 start-50 translate-middle">
+                                                <span class="badge bg-dark opacity-75"><i
+                                                        class="fas fa-search-plus"></i> Zoom</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        class="btn btn-light btn-sm w-100 mt-3 fw-bold text-secondary py-2 rounded-pill"
+                                        onclick="flipCard('card-{{ forloop.counter }}')">
+                                        <i class="fas fa-arrow-left me-1"></i> KEMBALI
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% else %}
+                <div class="text-center mt-5 pt-5 opacity-50">
+                    <i class="fas fa-robot fa-5x mb-3"></i>
+                    <h3>Siap Menganalisis Data</h3>
+                    <p>Silakan upload file dataset (CSV) di menu sebelah kiri.</p>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="matrixModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold" id="matrixModalTitle">Confusion Matrix</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center bg-white p-4">
+                    <img id="matrixModalImg" src="" alt="Confusion Matrix Full Size">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function flipCard(cardId) {
+            document.getElementById(cardId).classList.toggle('flipped');
+        }
+
+        function showModal(title, imageSrc) {
+            document.getElementById('matrixModalTitle').innerText = "Confusion Matrix: " + title;
+            document.getElementById('matrixModalImg').src = imageSrc;
+            var myModal = new bootstrap.Modal(document.getElementById('matrixModal'));
+            myModal.show();
+        }
+
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            if (input.type !== 'checkbox' && input.type !== 'file') {
+                input.classList.add('form-control', 'form-control-sm');
+            } else if (input.type === 'file') {
+                input.classList.add('form-control', 'form-control-sm');
+            }
+        });
+    </script>
+
+</body>
+
+</html>
