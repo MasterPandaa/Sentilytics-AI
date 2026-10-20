@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MasterPandaa/MasterPandaa/main/assets/banners/Sentilytics-AI.svg" alt="Sentilytics AI Banner" width="100%">
+  <img src="assets/banner.svg" alt="Sentilytics AI Banner" width="100%">
 </p>
 
 <p align="center">
